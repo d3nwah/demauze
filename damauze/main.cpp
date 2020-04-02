@@ -75,8 +75,10 @@ int maze[MAZE_HEIGHT][MAZE_WIDTH] =
 class Player
 {
 public:
-    int px = 1, py = 1;
-    DIR dirEnum = DIR::UP;
+    std::pair<int, int> pos;
+    DIR dirEnum;
+    Player() : pos(std::make_pair(1,1)), dirEnum(DIR::UP)
+    {}
 } p;
 
 int getField(std::pair<int, int> coord)
@@ -134,16 +136,12 @@ int main(int argc, char* args[])
                                 break;
                             case SDLK_UP:
                             {
-                                auto tempMove = simulateMove(std::make_pair(p.py, p.px), p.dirEnum, DIR::UP, true);
-                                p.py = tempMove.first;
-                                p.px = tempMove.second;
+                                p.pos = simulateMove(p.pos, p.dirEnum, DIR::UP, true);
                                 break;
                             }
                             case SDLK_DOWN:
                             {
-                                auto tempMove = simulateMove(std::make_pair(p.py, p.px), p.dirEnum, DIR::DOWN, true);
-                                p.py = tempMove.first;
-                                p.px = tempMove.second;
+                                p.pos = simulateMove(p.pos, p.dirEnum, DIR::DOWN, true);
                                 break;
                             }
                             default:
@@ -164,8 +162,8 @@ int main(int argc, char* args[])
             int frame = maxFrame; //the view will get progresively smaller as it goes forward
 
             bool hitWall = false; //will send a "blast" forward which will countinously render the scene as it goes until it hits a wall
-            int bx = p.px, by = p.py; //blast coords start from the player
 
+            int bx = p.pos.second, by = p.pos.first; //blast coords start from the player
             while (!hitWall)
             {
                 int perDif = frame / 5; //the perspective difference between advancements
@@ -238,7 +236,7 @@ int main(int argc, char* args[])
 
                     SDL_RenderDrawLine(theRenderer, lx1, ly1, lx1, ly1 + frame);
                     SDL_RenderDrawLine(theRenderer, lx1 + perDif, ly1 + perDif, lx1, ly1 + perDif);
-                        
+                    SDL_RenderDrawLine(theRenderer, lx1 + perDif, ly1 - perDif + frame, lx1, ly1 - perDif + frame);
                 }
 
                 if (!hitWall)
@@ -258,7 +256,7 @@ int main(int argc, char* args[])
                 {
                     for (int j = 0; j < MAZE_WIDTH; j++)
                     {
-                        if (i == p.py and j == p.px) {
+                        if (i == p.pos.first and j == p.pos.second) {
                             switch (p.dirEnum)
                             {
                                 case DIR::UP:
