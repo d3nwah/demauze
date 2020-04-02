@@ -7,12 +7,22 @@ SDL_Window* theWindow;
 SDL_Surface* theSurface;
 SDL_Renderer* theRenderer;
 
-const int MAZE_WIDTH=8, MAZE_HEIGHT=6;
+const int MAZE_WIDTH = 8, MAZE_HEIGHT = 6;
 
-int SCREEN_WIDTH= 400, SCREEN_HEIGHT=400;
+int SCREEN_WIDTH = 400, SCREEN_HEIGHT = 400;
 
-int dx[4] = { 0,1,0,-1 }; // up, right, down, left (from top down)
-int dy[4] = { 1,0,-1,0 };
+enum class DIR : int
+{
+    UP,
+    RIGHT,
+    DOWN,
+    LEFT
+};
+
+inline int WrapAroundDir(int dir)
+{
+    return (dir + 4) % 4;
+}
 
 bool printLevel=false;
 
@@ -56,19 +66,47 @@ int maze[MAZE_HEIGHT][MAZE_WIDTH] =
 {
 	{1,1,1,1,1,1,1,1},
 	{1,0,0,0,0,0,0,1},
-	{1,1,0,1,1,1,0,1},
+	{1,1,0,1,1,1,2,1},
 	{1,0,0,0,0,0,0,1},
 	{1,1,1,1,1,1,0,1},
 	{1,1,1,1,1,1,1,1}
 };
 
-class player
-{public:
-	int px = 1, py=1;
-	int dir = 0;
-	void move(int val) { if (maze[py + val * dy[dir]][px + val * dx[dir]] != 1) { px += val * dx[dir]; py += val * dy[dir]; printLevel = true; } }
-	void turn(int val) { dir = (dir + val + 4) % 4; std::cout << "dir set to<<" << dir << "\n"; printLevel = true; }
-}p;
+class Player
+{
+public:
+	int px = 1, py = 1;
+    DIR dirEnum = DIR::UP;
+} p;
+
+int getField(std::pair<int, int> coord)
+{
+    return maze[coord.first][coord.second];
+}
+
+DIR turn(DIR originalDir, DIR turnDir)
+{
+    return static_cast<DIR>(WrapAroundDir(static_cast<int>(originalDir) + (turnDir == DIR::LEFT ? -1 : 0) + (turnDir == DIR::RIGHT ? 1 : 0) + (turnDir == DIR::DOWN ? -2 : 0)));
+}
+
+std::pair<int, int> simulateMove( std::pair<int, int> originalPos, DIR dir, DIR turnOrMoveDirection, bool respectWalls = false )
+{
+    DIR targetDir = turn(dir, turnOrMoveDirection);
+    int y, x;
+    y = originalPos.first + (targetDir == DIR::UP ? -1 : 0) + (targetDir == DIR::DOWN ? 1 : 0);
+    x = originalPos.second + (targetDir == DIR::RIGHT ? 1 : 0) + (targetDir == DIR::LEFT ? -1 : 0);
+    auto newPos = std::make_pair(y, x);
+
+    if (respectWalls)
+    {
+        if (getField(newPos) == 1)
+        {
+            return originalPos;
+        }
+    }
+
+    return newPos;
+}
 
 int main(int argc, char* args[])
 {
@@ -85,120 +123,170 @@ int main(int argc, char* args[])
 					quit = true;
 				}
 				switch (e.type) {
-					/* Look for a keypress */
-				case SDL_KEYDOWN:
-					/* Check the SDLKey values and move change the coords */
-					switch (e.key.keysym.sym) {
-					case SDLK_LEFT:
-						p.turn(1);
-						break;
-					case SDLK_RIGHT:
-						p.turn(-1);
-						break;
-					case SDLK_UP:
-						p.move(1);
-						break;
-					case SDLK_DOWN:
-						p.move(-1);
-						break;
-					default:
-						break;
-					}
+				    case SDL_KEYDOWN:
+                    {
+                        switch (e.key.keysym.sym) {
+                            case SDLK_LEFT:
+                                p.dirEnum = turn(p.dirEnum, DIR::LEFT);
+                                break;
+                            case SDLK_RIGHT:
+                                p.dirEnum = turn(p.dirEnum, DIR::RIGHT);
+                                break;
+                            case SDLK_UP:
+                            {
+                                auto tempMove = simulateMove(std::make_pair(p.py, p.px), p.dirEnum, DIR::UP, true);
+                                p.py = tempMove.first;
+                                p.px = tempMove.second;
+                                break;
+                            }
+                            case SDLK_DOWN:
+                            {
+                                auto tempMove = simulateMove(std::make_pair(p.py, p.px), p.dirEnum, DIR::DOWN, true);
+                                p.py = tempMove.first;
+                                p.px = tempMove.second;
+                                break;
+                            }
+                            default:
+                                break;
+                        }
+
+                        printLevel = true;
+                    }
 				}
 			}
-			SDL_SetRenderDrawColor(theRenderer, 255, 255, 255, 255);
-
-			SDL_RenderClear(theRenderer);
 
 			//RENDERING GOES HERE
+            SDL_SetRenderDrawColor(theRenderer, 255, 255, 255, 255);
+            SDL_RenderClear(theRenderer);
 			SDL_SetRenderDrawColor(theRenderer, 0, 0, 0, 255);
-			bool hitWall = false; //will send a "blast" forward which will countinously render the scene as it goes until it hits a wall
-			
+
 			int maxFrame = SCREEN_HEIGHT;
 			int frame = maxFrame; //the view will get progresively smaller as it goes forward
 
+            bool hitWall = false; //will send a "blast" forward which will countinously render the scene as it goes until it hits a wall
 			int bx = p.px, by = p.py; //blast coords start from the player
-				
 
 			while (!hitWall)
 			{
 				int perDif = frame / 5; //the perspective difference between advancements
-				
-				if (maze[by][bx] == 1)
+
+				if (maze[by][bx] == 1) //wall the furthest from the player
 				{
 					hitWall = true;
-					//only one end wall will be rendered
-					SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2, (maxFrame - frame) / 2, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2);
-					SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2, (maxFrame - frame) / 2+frame, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2+frame);
 
-					//the trick for this whole rendering process. The endmost wall will stretch to the left and/or right on a split section to look like it's blocking the view
-					//this helps because no complex geometry has to be further drawn beyond this closing point
-					if (maze[by + dy[(p.dir - 1 + 4) % 4] + dy[(p.dir - 2 + 4) % 4]][bx + dx[(p.dir - 1 + 4) % 4]+ dx[(p.dir - 2 + 4) % 4]] == 1)
-						SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2+frame);
-					if (maze[by + dy[(p.dir + 1) % 4] + dy[(p.dir + 2) % 4]][bx + dx[(p.dir + 1)]+ dx[(p.dir + 2) % 4]] == 1)
-						SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2, (maxFrame - frame) / 2, (maxFrame - frame) / 2, (maxFrame - frame) / 2 + frame);
+					SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2, (maxFrame - frame) / 2, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2); //furthest horizontal line on the top
+                    SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2 + frame); //furthest horizontal line on the bottom
 
-					continue;	//escape point. Get out of the loop safely
+                    auto walkerHelperStepBack = simulateMove(std::make_pair(by, bx), p.dirEnum, DIR::DOWN);
+
+                    //Furthest vertical line on the right
+                    if (getField(simulateMove(walkerHelperStepBack, p.dirEnum, DIR::RIGHT)) == 1)
+                    {
+                        SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2 + frame);
+                    }
+                    
+                    //Furthest vertical line on the left
+                    if (getField(simulateMove(walkerHelperStepBack, p.dirEnum, DIR::LEFT)) == 1)
+                    {
+                        SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2, (maxFrame - frame) / 2, (maxFrame - frame) / 2, (maxFrame - frame) / 2 + frame);
+                    }
+					continue;
 				}
-				
-				if (maze[by + dy[(p.dir - 1+4) % 4]][bx + dx[(p.dir - 1+4)%4]] == 1)	//draw right side walls
+
+                auto walkerHelperStepRight = simulateMove(std::make_pair(by, bx), p.dirEnum, DIR::RIGHT);
+				if (getField(walkerHelperStepRight) == 1) //draw right side walls
 				{
 					int l1x = maxFrame - (maxFrame - frame) / 2, l1y = (maxFrame - frame) / 2;
 					int l2x = maxFrame - (maxFrame - frame) / 2, l2y = (maxFrame - frame) / 2 + frame;
 
-					SDL_RenderDrawLine(theRenderer, l1x, l1y, l1x -perDif, l1y + perDif);
-					SDL_RenderDrawLine(theRenderer, l2x, l2y , l2x - perDif, l2y- perDif);
+                    
+					SDL_RenderDrawLine(theRenderer, l1x, l1y, l1x - perDif, l1y + perDif); //upper right diagonal line
+					SDL_RenderDrawLine(theRenderer, l2x, l2y , l2x - perDif, l2y - perDif); //lower right diagonal line
 
-					if (maze[by + dy[(p.dir - 1 + 4) % 4] + dy[(p.dir - 2 + 4) % 4]][bx + dx[(p.dir - 1 + 4) % 4] + dx[(p.dir - 2 + 4) % 4]] == 0)//add split line if gap
-						SDL_RenderDrawLine(theRenderer, l1x, l1y, l1x, l2y);
-
+                    auto walkerHelperStepBackRight = simulateMove(walkerHelperStepRight, p.dirEnum, DIR::DOWN);
+                    if (getField(walkerHelperStepBackRight) == 0)
+                    {
+                        SDL_RenderDrawLine(theRenderer, l1x, l1y, l1x, l2y); //vertical right split line
+                    }
 				}
-				else	//fill with wall break on the right
+				else //fill with wall break on the right
 				{
 					int lx1 = maxFrame - (maxFrame - frame) / 2, ly1 = (maxFrame - frame) / 2;
 
-					SDL_RenderDrawLine(theRenderer, lx1, ly1, lx1 , ly1 + frame);
-					SDL_RenderDrawLine(theRenderer, lx1 - perDif, ly1 + perDif, lx1, ly1 + perDif );
-					SDL_RenderDrawLine(theRenderer, lx1 - perDif, ly1 - perDif+frame, lx1, ly1 - perDif+frame);
-
+					SDL_RenderDrawLine(theRenderer, lx1, ly1, lx1 , ly1 + frame); //vertical right split line
+					SDL_RenderDrawLine(theRenderer, lx1 - perDif, ly1 + perDif, lx1, ly1 + perDif ); //top horizontal split line 
+					SDL_RenderDrawLine(theRenderer, lx1 - perDif, ly1 - perDif + frame, lx1, ly1 - perDif+frame); //bottom horizontal split line
 				}
 
-				if (maze[by + dy[(p.dir + 1) % 4]][bx + dx[(p.dir + 1)]] == 1)			//draw left side walls
+                auto walkerHelperStepLeft = simulateMove(std::make_pair(by, bx), p.dirEnum, DIR::LEFT);
+				if (getField(walkerHelperStepLeft) == 1) //draw left side walls
 				{
 					int l1x = (maxFrame - frame) / 2, l1y = (maxFrame - frame) / 2;
 					int l2x = (maxFrame - frame) / 2, l2y = (maxFrame - frame) / 2 + frame;
 
-					SDL_RenderDrawLine(theRenderer,l1x ,l1y , l1x+perDif , l1y+perDif);
-					SDL_RenderDrawLine(theRenderer, l2x ,l2y , l2x+perDif, l2y-perDif);
+					SDL_RenderDrawLine(theRenderer, l1x, l1y, l1x+perDif, l1y+perDif); //upper left diagonal line
+					SDL_RenderDrawLine(theRenderer, l2x, l2y, l2x+perDif, l2y-perDif); //lower left diagonal line
 
-					if (maze[by + dy[(p.dir + 1) % 4] + dy[(p.dir + 2) % 4]][bx + dx[(p.dir + 1)] + dx[(p.dir + 2) % 4]] == 0)	//add split line if gap
-						SDL_RenderDrawLine(theRenderer, l1x, l1y, l1x, l2y);
+                    auto walkerHelperStepBackLeft = simulateMove(walkerHelperStepLeft, p.dirEnum, DIR::DOWN);
+                    if (getField(walkerHelperStepBackLeft) == 0)
+                    {
+                        SDL_RenderDrawLine(theRenderer, l1x, l1y, l1x, l2y); //vertical left split line
+                    }
 				}
-
-				else	//fill with wall break on the left
+				else //fill with wall break on the left
 				{
-					int lx1 =  (maxFrame - frame) / 2, ly1 = (maxFrame - frame) / 2;
+					int lx1 = (maxFrame - frame) / 2, ly1 = (maxFrame - frame) / 2;
 
 					SDL_RenderDrawLine(theRenderer, lx1, ly1, lx1, ly1 + frame);
 					SDL_RenderDrawLine(theRenderer, lx1 + perDif, ly1 + perDif, lx1, ly1 + perDif);
 					SDL_RenderDrawLine(theRenderer, lx1 + perDif, ly1 - perDif + frame, lx1, ly1 - perDif + frame);	
-
 				}
 
+                if (!hitWall)
+                {
+                    auto tempMove = simulateMove(std::make_pair(by, bx), p.dirEnum, DIR::UP);
+                    by = tempMove.first;
+                    bx = tempMove.second;
+                }
 
-				if(!hitWall)
-				bx += dx[p.dir], by += dy[p.dir];
-				frame -= perDif * 2;	//shrink frame as the view advances
+				frame -= perDif * 2; //shrink frame as the view advances
 			}
 
 			if (printLevel)
 			{
+                cout << "pdir " << (int) p.dirEnum << endl;
 				for (int i = 0; i < MAZE_HEIGHT; i++)
 				{
 					for (int j = 0; j < MAZE_WIDTH; j++)
 					{
 						if (i == p.py and j == p.px) {
-							if (p.dir == 0)std::cout << "v"; else if (p.dir == 1)std::cout << ">"; else if (p.dir == 2)std::cout << "^"; else  std::cout << "<";
+                            switch (p.dirEnum)
+                            {
+                                case DIR::UP:
+                                {
+                                    cout << "^";
+                                    break;
+                                };
+                                case DIR::DOWN:
+                                {
+                                    cout << "v";
+                                    break;
+                                };
+                                case DIR::LEFT:
+                                {
+                                    cout << "<";
+                                    break;
+                                };
+                                case DIR::RIGHT:
+                                {
+                                    cout << ">";
+                                    break;
+                                };
+                                default:
+                                {
+                                    __debugbreak(); //Wrong direction
+                                }
+                            }
 						}
 						else if (i == by && j == bx) cout << "x";
 						else if (maze[i][j] == 1) std::cout << "#";
