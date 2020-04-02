@@ -163,19 +163,19 @@ int main(int argc, char* args[])
 
             bool hitWall = false; //will send a "blast" forward which will countinously render the scene as it goes until it hits a wall
 
-            int bx = p.pos.second, by = p.pos.first; //blast coords start from the player
+            std::pair<int, int> b = p.pos;
             while (!hitWall)
             {
                 int perDif = frame / 5; //the perspective difference between advancements
 
-                if (maze[by][bx] == 1) //wall the furthest from the player
+                if (getField(b) == 1) //wall the furthest from the player
                 {
                     hitWall = true;
 
                     SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2, (maxFrame - frame) / 2, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2); //furthest horizontal line on the top
                     SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2 + frame); //furthest horizontal line on the bottom
 
-                    auto walkerHelperStepBack = simulateMove(std::make_pair(by, bx), p.dirEnum, DIR::DOWN);
+                    auto walkerHelperStepBack = simulateMove(b, p.dirEnum, DIR::DOWN);
 
                     //Furthest vertical line on the right
                     if (getField(simulateMove(walkerHelperStepBack, p.dirEnum, DIR::RIGHT)) == 1)
@@ -191,7 +191,7 @@ int main(int argc, char* args[])
                     continue;
                 }
 
-                auto walkerHelperStepRight = simulateMove(std::make_pair(by, bx), p.dirEnum, DIR::RIGHT);
+                auto walkerHelperStepRight = simulateMove(b, p.dirEnum, DIR::RIGHT);
                 if (getField(walkerHelperStepRight) == 1) //draw right side walls
                 {
                     int l1x = maxFrame - (maxFrame - frame) / 2, l1y = (maxFrame - frame) / 2;
@@ -215,7 +215,7 @@ int main(int argc, char* args[])
                     SDL_RenderDrawLine(theRenderer, lx1 - perDif, ly1 - perDif + frame, lx1, ly1 - perDif+frame); //bottom horizontal split line
                 }
 
-                auto walkerHelperStepLeft = simulateMove(std::make_pair(by, bx), p.dirEnum, DIR::LEFT);
+                auto walkerHelperStepLeft = simulateMove(b, p.dirEnum, DIR::LEFT);
                 if (getField(walkerHelperStepLeft) == 1) //draw left side walls
                 {
                     int l1x = (maxFrame - frame) / 2, l1y = (maxFrame - frame) / 2;
@@ -241,9 +241,7 @@ int main(int argc, char* args[])
 
                 if (!hitWall)
                 {
-                    auto tempMove = simulateMove(std::make_pair(by, bx), p.dirEnum, DIR::UP);
-                    by = tempMove.first;
-                    bx = tempMove.second;
+                    b = simulateMove(b, p.dirEnum, DIR::UP);
                 }
 
                 frame -= perDif * 2; //shrink frame as the view advances
@@ -285,7 +283,7 @@ int main(int argc, char* args[])
                                 }
                             }
                         }
-                        else if (i == by && j == bx) cout << "x";
+                        else if (i == b.first && j == b.second) cout << "x";
                         else if (maze[i][j] == 1) std::cout << "#";
                         else std::cout << " ";
                     }
