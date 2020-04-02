@@ -28,54 +28,54 @@ bool printLevel=false;
 
 bool PrepareSDL()
 {
-	if (SDL_Init(SDL_INIT_VIDEO) < 0)
-	{
-		return false;
-	}
-	else
-	{
-		theWindow = SDL_CreateWindow("damauze", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-		if (theWindow == NULL)
-		{
-			return false;
-		}
-		else
-		{
-			theRenderer = SDL_CreateRenderer(theWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-			if (theRenderer == NULL)
-			{
-				return false;
-			}
-			else
-			{
-				SDL_SetRenderDrawColor(theRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-			}
-		}
-	}
-	return true;
+    if (SDL_Init(SDL_INIT_VIDEO) < 0)
+    {
+        return false;
+    }
+    else
+    {
+        theWindow = SDL_CreateWindow("damauze", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+        if (theWindow == NULL)
+        {
+            return false;
+        }
+        else
+        {
+            theRenderer = SDL_CreateRenderer(theWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+            if (theRenderer == NULL)
+            {
+                return false;
+            }
+            else
+            {
+                SDL_SetRenderDrawColor(theRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+            }
+        }
+    }
+    return true;
 }
 void CloseAll()
 {
-	SDL_DestroyWindow(theWindow);
-	theWindow = NULL;
+    SDL_DestroyWindow(theWindow);
+    theWindow = NULL;
 
-	SDL_Quit();
+    SDL_Quit();
 }
 
 int maze[MAZE_HEIGHT][MAZE_WIDTH] =
 {
-	{1,1,1,1,1,1,1,1},
-	{1,0,0,0,0,0,0,1},
-	{1,1,0,1,1,1,2,1},
-	{1,0,0,0,0,0,0,1},
-	{1,1,1,1,1,1,0,1},
-	{1,1,1,1,1,1,1,1}
+    {1,1,1,1,1,1,1,1},
+    {1,0,0,0,0,0,0,1},
+    {1,1,0,1,1,1,2,1},
+    {1,0,0,0,0,0,0,1},
+    {1,1,1,1,1,1,0,1},
+    {1,1,1,1,1,1,1,1}
 };
 
 class Player
 {
 public:
-	int px = 1, py = 1;
+    int px = 1, py = 1;
     DIR dirEnum = DIR::UP;
 } p;
 
@@ -110,20 +110,20 @@ std::pair<int, int> simulateMove( std::pair<int, int> originalPos, DIR dir, DIR 
 
 int main(int argc, char* args[])
 {
-	if (PrepareSDL())
-	{
-		bool quit = false;
-		SDL_Event e;
-		while (!quit)
-		{
-			while (SDL_PollEvent(&e) != 0)
-			{
-				if (e.type == SDL_QUIT)
-				{
-					quit = true;
-				}
-				switch (e.type) {
-				    case SDL_KEYDOWN:
+    if (PrepareSDL())
+    {
+        bool quit = false;
+        SDL_Event e;
+        while (!quit)
+        {
+            while (SDL_PollEvent(&e) != 0)
+            {
+                if (e.type == SDL_QUIT)
+                {
+                    quit = true;
+                }
+                switch (e.type) {
+                    case SDL_KEYDOWN:
                     {
                         switch (e.key.keysym.sym) {
                             case SDLK_LEFT:
@@ -152,29 +152,29 @@ int main(int argc, char* args[])
 
                         printLevel = true;
                     }
-				}
-			}
+                }
+            }
 
-			//RENDERING GOES HERE
+            //RENDERING GOES HERE
             SDL_SetRenderDrawColor(theRenderer, 255, 255, 255, 255);
             SDL_RenderClear(theRenderer);
-			SDL_SetRenderDrawColor(theRenderer, 0, 0, 0, 255);
+            SDL_SetRenderDrawColor(theRenderer, 0, 0, 0, 255);
 
-			int maxFrame = SCREEN_HEIGHT;
-			int frame = maxFrame; //the view will get progresively smaller as it goes forward
+            int maxFrame = SCREEN_HEIGHT;
+            int frame = maxFrame; //the view will get progresively smaller as it goes forward
 
             bool hitWall = false; //will send a "blast" forward which will countinously render the scene as it goes until it hits a wall
-			int bx = p.px, by = p.py; //blast coords start from the player
+            int bx = p.px, by = p.py; //blast coords start from the player
 
-			while (!hitWall)
-			{
-				int perDif = frame / 5; //the perspective difference between advancements
+            while (!hitWall)
+            {
+                int perDif = frame / 5; //the perspective difference between advancements
 
-				if (maze[by][bx] == 1) //wall the furthest from the player
-				{
-					hitWall = true;
+                if (maze[by][bx] == 1) //wall the furthest from the player
+                {
+                    hitWall = true;
 
-					SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2, (maxFrame - frame) / 2, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2); //furthest horizontal line on the top
+                    SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2, (maxFrame - frame) / 2, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2); //furthest horizontal line on the top
                     SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2 + frame); //furthest horizontal line on the bottom
 
                     auto walkerHelperStepBack = simulateMove(std::make_pair(by, bx), p.dirEnum, DIR::DOWN);
@@ -184,63 +184,62 @@ int main(int argc, char* args[])
                     {
                         SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2, (maxFrame - frame) / 2 + frame, (maxFrame - frame) / 2 + frame);
                     }
-                    
+
                     //Furthest vertical line on the left
                     if (getField(simulateMove(walkerHelperStepBack, p.dirEnum, DIR::LEFT)) == 1)
                     {
                         SDL_RenderDrawLine(theRenderer, (maxFrame - frame) / 2, (maxFrame - frame) / 2, (maxFrame - frame) / 2, (maxFrame - frame) / 2 + frame);
                     }
-					continue;
-				}
+                    continue;
+                }
 
                 auto walkerHelperStepRight = simulateMove(std::make_pair(by, bx), p.dirEnum, DIR::RIGHT);
-				if (getField(walkerHelperStepRight) == 1) //draw right side walls
-				{
-					int l1x = maxFrame - (maxFrame - frame) / 2, l1y = (maxFrame - frame) / 2;
-					int l2x = maxFrame - (maxFrame - frame) / 2, l2y = (maxFrame - frame) / 2 + frame;
+                if (getField(walkerHelperStepRight) == 1) //draw right side walls
+                {
+                    int l1x = maxFrame - (maxFrame - frame) / 2, l1y = (maxFrame - frame) / 2;
+                    int l2x = maxFrame - (maxFrame - frame) / 2, l2y = (maxFrame - frame) / 2 + frame;
 
-                    
-					SDL_RenderDrawLine(theRenderer, l1x, l1y, l1x - perDif, l1y + perDif); //upper right diagonal line
-					SDL_RenderDrawLine(theRenderer, l2x, l2y , l2x - perDif, l2y - perDif); //lower right diagonal line
+                    SDL_RenderDrawLine(theRenderer, l1x, l1y, l1x - perDif, l1y + perDif); //upper right diagonal line
+                    SDL_RenderDrawLine(theRenderer, l2x, l2y , l2x - perDif, l2y - perDif); //lower right diagonal line
 
                     auto walkerHelperStepBackRight = simulateMove(walkerHelperStepRight, p.dirEnum, DIR::DOWN);
                     if (getField(walkerHelperStepBackRight) == 0)
                     {
                         SDL_RenderDrawLine(theRenderer, l1x, l1y, l1x, l2y); //vertical right split line
                     }
-				}
-				else //fill with wall break on the right
-				{
-					int lx1 = maxFrame - (maxFrame - frame) / 2, ly1 = (maxFrame - frame) / 2;
+                }
+                else //fill with wall break on the right
+                {
+                    int lx1 = maxFrame - (maxFrame - frame) / 2, ly1 = (maxFrame - frame) / 2;
 
-					SDL_RenderDrawLine(theRenderer, lx1, ly1, lx1 , ly1 + frame); //vertical right split line
-					SDL_RenderDrawLine(theRenderer, lx1 - perDif, ly1 + perDif, lx1, ly1 + perDif ); //top horizontal split line 
-					SDL_RenderDrawLine(theRenderer, lx1 - perDif, ly1 - perDif + frame, lx1, ly1 - perDif+frame); //bottom horizontal split line
-				}
+                    SDL_RenderDrawLine(theRenderer, lx1, ly1, lx1 , ly1 + frame); //vertical right split line
+                    SDL_RenderDrawLine(theRenderer, lx1 - perDif, ly1 + perDif, lx1, ly1 + perDif ); //top horizontal split line
+                    SDL_RenderDrawLine(theRenderer, lx1 - perDif, ly1 - perDif + frame, lx1, ly1 - perDif+frame); //bottom horizontal split line
+                }
 
                 auto walkerHelperStepLeft = simulateMove(std::make_pair(by, bx), p.dirEnum, DIR::LEFT);
-				if (getField(walkerHelperStepLeft) == 1) //draw left side walls
-				{
-					int l1x = (maxFrame - frame) / 2, l1y = (maxFrame - frame) / 2;
-					int l2x = (maxFrame - frame) / 2, l2y = (maxFrame - frame) / 2 + frame;
+                if (getField(walkerHelperStepLeft) == 1) //draw left side walls
+                {
+                    int l1x = (maxFrame - frame) / 2, l1y = (maxFrame - frame) / 2;
+                    int l2x = (maxFrame - frame) / 2, l2y = (maxFrame - frame) / 2 + frame;
 
-					SDL_RenderDrawLine(theRenderer, l1x, l1y, l1x+perDif, l1y+perDif); //upper left diagonal line
-					SDL_RenderDrawLine(theRenderer, l2x, l2y, l2x+perDif, l2y-perDif); //lower left diagonal line
+                    SDL_RenderDrawLine(theRenderer, l1x, l1y, l1x+perDif, l1y+perDif); //upper left diagonal line
+                    SDL_RenderDrawLine(theRenderer, l2x, l2y, l2x+perDif, l2y-perDif); //lower left diagonal line
 
                     auto walkerHelperStepBackLeft = simulateMove(walkerHelperStepLeft, p.dirEnum, DIR::DOWN);
                     if (getField(walkerHelperStepBackLeft) == 0)
                     {
                         SDL_RenderDrawLine(theRenderer, l1x, l1y, l1x, l2y); //vertical left split line
                     }
-				}
-				else //fill with wall break on the left
-				{
-					int lx1 = (maxFrame - frame) / 2, ly1 = (maxFrame - frame) / 2;
+                }
+                else //fill with wall break on the left
+                {
+                    int lx1 = (maxFrame - frame) / 2, ly1 = (maxFrame - frame) / 2;
 
-					SDL_RenderDrawLine(theRenderer, lx1, ly1, lx1, ly1 + frame);
-					SDL_RenderDrawLine(theRenderer, lx1 + perDif, ly1 + perDif, lx1, ly1 + perDif);
-					SDL_RenderDrawLine(theRenderer, lx1 + perDif, ly1 - perDif + frame, lx1, ly1 - perDif + frame);	
-				}
+                    SDL_RenderDrawLine(theRenderer, lx1, ly1, lx1, ly1 + frame);
+                    SDL_RenderDrawLine(theRenderer, lx1 + perDif, ly1 + perDif, lx1, ly1 + perDif);
+                        
+                }
 
                 if (!hitWall)
                 {
@@ -249,17 +248,17 @@ int main(int argc, char* args[])
                     bx = tempMove.second;
                 }
 
-				frame -= perDif * 2; //shrink frame as the view advances
-			}
+                frame -= perDif * 2; //shrink frame as the view advances
+            }
 
-			if (printLevel)
-			{
+            if (printLevel)
+            {
                 cout << "pdir " << (int) p.dirEnum << endl;
-				for (int i = 0; i < MAZE_HEIGHT; i++)
-				{
-					for (int j = 0; j < MAZE_WIDTH; j++)
-					{
-						if (i == p.py and j == p.px) {
+                for (int i = 0; i < MAZE_HEIGHT; i++)
+                {
+                    for (int j = 0; j < MAZE_WIDTH; j++)
+                    {
+                        if (i == p.py and j == p.px) {
                             switch (p.dirEnum)
                             {
                                 case DIR::UP:
@@ -287,20 +286,20 @@ int main(int argc, char* args[])
                                     __debugbreak(); //Wrong direction
                                 }
                             }
-						}
-						else if (i == by && j == bx) cout << "x";
-						else if (maze[i][j] == 1) std::cout << "#";
-						else std::cout << " ";
-					}
-					std::cout << endl;
-				}
-				printLevel = false;
-				std::cout << endl;
-			}
+                        }
+                        else if (i == by && j == bx) cout << "x";
+                        else if (maze[i][j] == 1) std::cout << "#";
+                        else std::cout << " ";
+                    }
+                    std::cout << endl;
+                }
+                printLevel = false;
+                std::cout << endl;
+            }
 
-			SDL_RenderPresent(theRenderer);
-			SDL_Delay(1.0/60.0);
-		}
-	}
-	return 0;
+            SDL_RenderPresent(theRenderer);
+            SDL_Delay(1.0/60.0);
+        }
+    }
+    return 0;
 }
