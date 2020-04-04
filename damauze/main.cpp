@@ -62,13 +62,12 @@ void CloseAll()
     SDL_Quit();
 }
 
-int maze[MAZE_HEIGHT][MAZE_WIDTH] =
-{
+int maze[MAZE_HEIGHT][MAZE_WIDTH] = {
     {1,1,1,1,1,1,1,1},
     {1,0,0,0,0,0,0,1},
-    {1,1,0,1,1,1,2,1},
+    {1,1,0,1,0,1,0,1},
     {1,0,0,0,0,0,0,1},
-    {1,1,1,1,1,1,0,1},
+    {1,1,1,0,1,1,0,1},
     {1,1,1,1,1,1,1,1}
 };
 
@@ -90,6 +89,118 @@ DIR turn(DIR originalDir, DIR turnDir)
 {
     return static_cast<DIR>(WrapAroundDir(static_cast<int>(originalDir) + (turnDir == DIR::LEFT ? -1 : 0) + (turnDir == DIR::RIGHT ? 1 : 0) + (turnDir == DIR::DOWN ? -2 : 0)));
 }
+
+class Enemy
+{
+public:
+    std::pair<int, int> m_pos;
+    DIR m_dir;
+    Enemy()
+    {
+        m_pos = std::make_pair(1, 1);
+        m_dir = DIR::RIGHT;
+    }
+
+    Enemy(std::pair<int, int> pos) : Enemy()
+    {
+        m_pos = pos;
+    }
+
+    virtual void draw(std::pair<int, int> startPoint, int canvasLength) = 0;
+
+    virtual void updateAI() = 0;
+};
+
+class Rat : public Enemy
+{
+private:
+    const static int sprite_length = 22;
+    int sprite[sprite_length][2] = {
+        { 63, 12 },
+        { 49, 24 },
+        { 38, 20 },
+        { 31, 28 },
+        { 37, 37 },
+        { 48, 35 },
+        { 55, 39 },
+        { 50, 54 },
+        { 56, 68 },
+        { 51, 79 },
+        { 59, 88 },
+        { 61, 72 },
+        { 81, 80 },
+        { 85, 73 },
+        { 77, 70 },
+        { 75, 64 },
+        { 74, 35 },
+        { 88, 32 },
+        { 86, 26 },
+        { 75, 30 },
+        { 66, 24 },
+        { 63, 12 }
+    };
+
+public:
+    void draw(std::pair<int, int> startPoint, int canvasLength) override
+    {
+        SDL_SetRenderDrawColor(theRenderer, 255, 0, 0, 255);
+
+        for (int i = 0; i < sprite_length - 1; i++)
+        {
+            SDL_RenderDrawLine(
+                theRenderer,
+                startPoint.second + sprite[i][1] * canvasLength / 100, startPoint.first + sprite[i][0] * canvasLength / 100,
+                startPoint.second + sprite[i + 1][1] * canvasLength / 100, startPoint.first + sprite[i + 1][0] * canvasLength / 100
+            );
+        }
+
+        SDL_SetRenderDrawColor(theRenderer, 0, 0, 0, 255);
+    }
+
+    virtual void updateAI()
+    {
+        //Placeholder AI
+        while (true)
+        {
+            this->m_dir = static_cast<DIR>(rand() % 4);
+            auto newPosCandidate = this->m_pos;
+
+            switch (this->m_dir)
+            {
+                case DIR::UP:
+                {
+                    newPosCandidate.first -= 1;
+                    break;
+                };
+                case DIR::DOWN:
+                {
+                    newPosCandidate.first += 1;
+                    break;
+                };
+                case DIR::LEFT:
+                {
+                    newPosCandidate.second -= 1;
+                    break;
+                };
+                case DIR::RIGHT:
+                {
+                    newPosCandidate.second += 1;
+                    break;
+                };
+                default:
+                {
+                    __debugbreak(); //Wrong direction
+                }
+            }
+
+            if (getField(newPosCandidate) != 1)
+            {
+                this->m_pos = newPosCandidate;
+                break;
+            }
+        }
+    }
+} rat;
 
 std::pair<int, int> simulateMove( std::pair<int, int> originalPos, DIR dir, DIR turnOrMoveDirection, bool respectWalls = false )
 {
@@ -145,7 +256,10 @@ int main(int argc, char* args[])
                                 break;
                             }
                             default:
+                            {
+                                rat.updateAI();
                                 break;
+                            }
                         }
 
                         printLevel = true;
@@ -167,6 +281,12 @@ int main(int argc, char* args[])
             while (!hitWall)
             {
                 int perDif = frame / 5; //the perspective difference between advancements
+
+                if (b == rat.m_pos)
+                {
+                    auto startPoint = std::make_pair(maxFrame / 2 - frame / 2, maxFrame / 2 - frame / 2);
+                    rat.draw(startPoint, frame);
+                }
 
                 if (getField(b) == 1) //wall the furthest from the player
                 {
